@@ -1,46 +1,49 @@
 import cv2
+from flask import Flask, Response
 
-# Загрузка предварительно обученных моделей для распознавания лиц и ключевых точек
+# Инициализация Flask
+app = Flask(__name__)
+
+# Загрузка каскада Хаара для распознавания лиц
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-facemark = cv2.face.createFacemarkLBF()
-facemark.loadModel('lbfmodel.yaml')
 
-# Инициализация видеозахвата
-cap = cv2.VideoCapture(0)
+def generate_frames():
+    # Инициализация видеозахвата
+    cap = cv2.VideoCapture(0)
 
-while True:
-    # Захват кадра
-    ret, frame = cap.read()
-    if not ret:
-        break
+    while True:
+        # Захват кадра
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    # Преобразование кадра в оттенки серого
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Преобразование кадра в оттенки серого
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Обнаружение лиц
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        # Распознавание лиц
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
-    # Для каждого обнаруженного лица
-    for (x, y, w, h) in faces:
-        # Рисуем прямоугольник вокруг лица
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+        # Рисуем прямоугольники вокруг лиц
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
 
-        # Обнаружение ключевых точек лица
-        ok, landmarks = facemark.fit(gray, faces=[[x, y, w, h]])
+        # Преобразуем кадр в JPEG
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
 
-        if ok:
-            # Рисуем ключевые точки
-            for landmark in landmarks:
-                for (x, y) in landmark[0]:
-                    cv2.circle(frame, (int(x), int(y)), 1, (0, 255, 0), -1)
+        # Возвращаем кадр в виде байтов
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-    # Отображение кадра
-    cv2.imshow('Face Detection', frame)
+    # Освобождение ресурсов
+    cap.release()
 
-    # Выход по нажатию клавиши 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+# Маршрут для вывода видео
+@app.route('/video')
+def video():
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# Освобождение ресурсов
-cap.release()
-cv2.destroyAllWindows()
+# Запуск сервера
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
