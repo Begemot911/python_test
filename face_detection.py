@@ -63,7 +63,37 @@ def video():
 
 @app.route('/')
 def index():
-    return "Сервер работает! Перейдите на /video для просмотра видео."
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Face Detection</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {
+                text-align: center;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background-color: #f0f0f0;
+            }
+            h1 {
+                color: #333;
+            }
+            img {
+                max-width: 100%;
+                height: auto;
+                border: 2px solid #333;
+                border-radius: 5px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Распознавание лиц с Orange Pi</h1>
+        <img src="/video" alt="Видеопоток">
+    </body>
+    </html>
+    """
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
